@@ -11,12 +11,12 @@ class GUI {
   initGui(props) {
     const mainBrain = props;
     this.controls = new (function c() {
-      this.rotationSpeed = 0.5;
+      this.rotationSpeed = 0.22;
 
-      this.floor = 0xdde3e9;
+      this.floor = 0x000000;
       this.transitioning = false;
       this.autoRotate = true;
-      this.lightIntensity = 1.45;
+      this.lightIntensity = 1.5;
       this.lightDistance = 175;
 
       this.lightHelper = false;
@@ -25,19 +25,26 @@ class GUI {
       this.burbleProgress = 0.1;
 
       this.showBubbles = false;
-      this.particleGlow = 0xdde3e9;
+      this.particleGlow = 0x000000;
       this.memory = 1;
       this.thinking = false;
       this.startIntro = true;
       this.recording = false;
       this.cameraAnimation = 1;
-      this.c = 1.11;
+      this.c = 1.1;
       this.p = 1.0;
       this.offsetY = 0.1;
       this.showXray = false;
     })();
 
     const gui = new dat.GUI();
+
+    // Apply initial defaults to the scene
+    mainBrain.orbitControls.autoRotate = this.controls.autoRotate;
+    mainBrain.spotLight.intensity = this.controls.lightIntensity;
+    mainBrain.spotLight.position.set(0, this.controls.lightDistance, -10);
+    mainBrain.scene.background = new THREE.Color(this.controls.particleGlow);
+    mainBrain.plane.material.color = new THREE.Color(this.controls.floor);
 
     gui.add(this.controls, "rotationSpeed", 0.1, 2.0);
     gui.add(this.controls, "autoRotate").onChange((val) => {
