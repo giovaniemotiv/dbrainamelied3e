@@ -12,11 +12,13 @@ import {
 
 class AbstractApplication {
   constructor() {
+    // Expand the camera far plane so wide rotations don't clip side brains.
+    // Previously far=1000; increase to 5000.
     this.a_camera = new THREE.PerspectiveCamera(
       50,
       window.innerWidth / window.innerHeight,
       1,
-      1000
+      5000
     );
     this.a_camera.position.z = 1000;
 
@@ -26,7 +28,8 @@ class AbstractApplication {
     this.a_blurScene = new THREE.Scene();
     this.a_bloomScene = new THREE.Scene();
 
-    this.a_scene.fog = new THREE.Fog(0xa7b6d2, 300, 1300);
+  // Adjust fog far distance to match larger scene scale (previously 1300).
+  this.a_scene.fog = new THREE.Fog(0xa7b6d2, 300, 4000);
 
     this.a_renderer = new THREE.WebGLRenderer({
       antialias: true,
@@ -84,7 +87,8 @@ class AbstractApplication {
     this.orbitControls.zoomSpeed = 0.1;
     this.orbitControls.panSpeed = 0.1;
     this.orbitControls.minDistance = 50;
-    this.orbitControls.maxDistance = 2500;
+  // Allow the user to zoom further out for the expanded scene size.
+  this.orbitControls.maxDistance = 4500;
     this.orbitControls.autoRotate = false;
     this.orbitControls.autoRotateSpeed = 1.0;
     this.orbitControls.rotateSpeed = 0.1;

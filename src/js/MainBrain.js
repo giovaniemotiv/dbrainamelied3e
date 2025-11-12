@@ -40,7 +40,9 @@ class MainBrain extends AbstractApplication {
   }
 
   addFloor() {
-    const geometry = new THREE.PlaneBufferGeometry(20000, 20000);
+    // Increase the floor size so side brains don't intersect the background when
+    // the scene rotates. Previously 20000x20000 — enlarge to 50000x50000.
+    const geometry = new THREE.PlaneBufferGeometry(50000, 50000);
     const material = new THREE.MeshPhongMaterial({
       opacity: 0.1,
       transparent: true,
