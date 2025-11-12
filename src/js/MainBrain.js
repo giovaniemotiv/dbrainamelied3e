@@ -4,7 +4,6 @@ import { Power4, TweenMax } from "gsap";
 import "three/examples/js/BufferGeometryUtils";
 import AbstractApplication from "./views/AbstractApplication";
 import Loaders from "./Loaders/Loaders";
-import BubblesAnimation from "./services/bubblesAnimation";
 import ThinkingAnimation from "./services/thinkingAnimation";
 import GUI from "./services/gui";
 import Font from "./services/font";
@@ -113,23 +112,35 @@ class MainBrain extends AbstractApplication {
   }
 
   startIntro() {
-    const progress = { p: 1000 };
+  const progress = { p: 1000 };
     TweenMax.fromTo(
       progress,
       6.5,
       { p: 1000 },
       {
-        p: 380,
+        p: 700,
         ease: Power4.easeInOut,
         onUpdate: () => {
           this.camera.position.z = progress.p;
         },
         onStart: () => {
           this.particlesSystem.transform(true);
+          if (this.particlesSystem2) {
+            this.particlesSystem2.transform(true);
+          }
+          if (this.particlesSystem3) {
+            this.particlesSystem3.transform(true);
+          }
         },
         onComplete: () => {
           //hide xray
           this.particlesSystem.xRay.material.uniforms.c.value = 1.0;
+          if (this.particlesSystem2) {
+            this.particlesSystem2.xRay.material.uniforms.c.value = 1.0;
+          }
+          if (this.particlesSystem3) {
+            this.particlesSystem3.xRay.material.uniforms.c.value = 1.0;
+          }
           this.startAutoDemo();
         }
       }
@@ -137,26 +148,32 @@ class MainBrain extends AbstractApplication {
   }
 
   startAutoDemo() {
-    let memoryCount = 1;
     this.scene.add(this.particlesSystem.xRay);
-    let memoryTimer;
-    const me = this;
+    if (this.particlesSystem2) {
+      this.scene.add(this.particlesSystem2.xRay);
+    }
+    if (this.particlesSystem3) {
+      this.scene.add(this.particlesSystem3.xRay);
+    }
     setTimeout(() => {
       //enable xRay Animation
       this.particlesSystem.isXRayActive(true);
+      if (this.particlesSystem2) {
+        this.particlesSystem2.isXRayActive(true);
+      }
+      if (this.particlesSystem3) {
+        this.particlesSystem3.isXRayActive(true);
+      }
       setTimeout(() => {
         //remove animation
         this.particlesSystem.isXRayActive(false);
-        //Enable Memories
-        memoryTimer = setInterval(() => {
-          if (memoryCount < 5) {
-            this.bubblesAnimation.updateSubSystem(memoryCount);
-            memoryCount += 1;
-          } else {
-            this.bubblesAnimation.updateSubSystem(0);
-            clearInterval(memoryTimer);
-          }
-        }, 9000);
+        if (this.particlesSystem2) {
+          this.particlesSystem2.isXRayActive(false);
+        }
+        if (this.particlesSystem3) {
+          this.particlesSystem3.isXRayActive(false);
+        }
+        // Memories auto-demo removed (bubbles animation disabled)
       }, 4000);
     }, 2000);
   }
@@ -194,12 +211,45 @@ class MainBrain extends AbstractApplication {
     this.gui = new GUI(this);
     this.addBrain();
     this.addParticlesSystem();
+    // Second brain instance (side clone)
+    this.particlesSystem2 = new ParticleSystem(
+      this,
+      this.endPointsCollections,
+      this.memories
+    );
+    this.particlesSystem2.particles.position.x = 420;
+    this.particlesSystem2.xRay.position.x = 420;
+    this.scene.add(this.particlesSystem2.particles);
+    this.scene.add(this.particlesSystem2.xRay);
+
+    // Third brain instance (left side clone)
+    this.particlesSystem3 = new ParticleSystem(
+      this,
+      this.endPointsCollections,
+      this.memories
+    );
+    this.particlesSystem3.particles.position.x = -420;
+    this.particlesSystem3.xRay.position.x = -420;
+    this.scene.add(this.particlesSystem3.particles);
+    this.scene.add(this.particlesSystem3.xRay);
     this.font = new Font(this.loaders, this.scene);
-    this.bubblesAnimation = new BubblesAnimation(this);
-    this.bubblesAnimation.initAnimation();
 
     this.thinkingAnimation = new ThinkingAnimation(this);
     this.thinkingAnimation.initAnimation();
+  // Keep thinking animation running by default
+  this.thinkingAnimation.isActive(true);
+
+    // Second thinking animation aligned with the second brain
+    this.thinkingAnimation2 = new ThinkingAnimation(this);
+    this.thinkingAnimation2.initAnimation();
+    this.thinkingAnimation2.flashing.position.x = 420;
+    this.thinkingAnimation2.isActive(true);
+
+  // Third thinking animation aligned with the third brain
+  this.thinkingAnimation3 = new ThinkingAnimation(this);
+  this.thinkingAnimation3.initAnimation();
+  this.thinkingAnimation3.flashing.position.x = -420;
+  this.thinkingAnimation3.isActive(true);
 
     // Set Background
     //this.scene.background = this.loaders.assets.get('sky');
@@ -218,8 +268,28 @@ class MainBrain extends AbstractApplication {
       this.camera,
       this.particlesSystem.xRay
     );
-    this.bubblesAnimation.update(this.camera, this.deltaTime);
+    if (this.particlesSystem2) {
+      this.particlesSystem2.update(
+        this.deltaTime,
+        this.camera,
+        this.particlesSystem2.xRay
+      );
+    }
+    if (this.particlesSystem3) {
+      this.particlesSystem3.update(
+        this.deltaTime,
+        this.camera,
+        this.particlesSystem3.xRay
+      );
+    }
+    // bubbles animation removed
     this.thinkingAnimation.update(this.camera, this.deltaTime);
+    if (this.thinkingAnimation2) {
+      this.thinkingAnimation2.update(this.camera, this.deltaTime);
+    }
+    if (this.thinkingAnimation3) {
+      this.thinkingAnimation3.update(this.camera, this.deltaTime);
+    }
 
     this.stats.update();
     requestAnimationFrame(this.animate.bind(this));

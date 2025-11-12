@@ -1,7 +1,6 @@
 import * as THREE from "three";
 import { Power1, Back, TweenMax } from "gsap";
 import * as dat from "three/examples/js/libs/dat.gui.min";
-import testPayload from "../data/testPayload";
 
 class GUI {
   constructor(props) {
@@ -60,7 +59,7 @@ class GUI {
     });
 
     gui.add(this.controls, "lightIntensity", 0.0, 2.0).onChange((val) => {
-      this.spotLight.intensity = val;
+      mainBrain.spotLight.intensity = val;
     });
 
     gui.add(this.controls, "c", 0.0, 2.0).onChange((val) => {
@@ -89,13 +88,7 @@ class GUI {
       mainBrain.spotLight.position.set(0, val, -10);
     });
 
-    gui.add(this.controls, "uBurbleUp", 0.0, 1.0).onChange((val) => {
-      mainBrain.bubblesAnimation.updateBurbleUp(val);
-    });
-
-    gui.add(this.controls, "memory", 0, 4).onChange((val) => {
-      mainBrain.bubblesAnimation.updateSubSystem(testPayload);
-    });
+    // Bubbles controls removed
 
     gui.addColor(this.controls, "particleGlow").onChange((e) => {
       mainBrain.scene.background = new THREE.Color(e);
@@ -105,13 +98,7 @@ class GUI {
       mainBrain.plane.material.color = new THREE.Color(e);
     });
 
-    gui.add(this.controls, "burbleProgress", 0.0, 1.0).onChange((val) => {
-      mainBrain.bubblesAnimation.updateBurbleUp(val);
-    });
-
-    gui.add(this.controls, "showBubbles").onChange((val) => {
-      mainBrain.bubblesAnimation.animate(val);
-    });
+    // Bubbles controls removed
 
     gui.add(this.controls, "startIntro").onChange((val) => {
       mainBrain.startIntro(val);
