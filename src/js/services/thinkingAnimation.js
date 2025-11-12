@@ -123,33 +123,43 @@ class ThinkingAnimation {
         return { color: this.metricColors[maxKey] || this.metricColors.attention, value: Math.max(0, Math.min(100, maxVal)) };
     }
 
-    // Compute blended color and intensity data based on weighted metrics
+    // Compute additive color (sum of contributions) with tone mapping to avoid white-out
     getBlendedColorAndIntensity() {
         const keys = ['attention', 'engagement', 'excitement', 'interest', 'relaxation', 'stress'];
         let sum = 0;
         let maxVal = 0;
-        const weights = {};
-        keys.forEach((k) => {
-            const v = Math.max(0, Math.min(100, Number(this.metrics[k] || 0)));
-            weights[k] = v;
-            sum += v;
-            if (v > maxVal) maxVal = v;
-        });
-
-        if (sum <= 0) {
-            return { color: new THREE.Color(0x000000), maxVal: 0, sumVal: 0 };
-        }
-
-        // Weighted blend in linear space
+        // Accumulate additive contributions
         let r = 0, g = 0, b = 0;
         keys.forEach((k) => {
-            const w = weights[k] / sum;
-            if (w <= 0) return;
+            const v = Math.max(0, Math.min(100, Number(this.metrics[k] || 0)));
+            sum += v;
+            if (v > maxVal) maxVal = v;
+            if (v <= 0) return;
+            // Weight curve to emphasize stronger metrics (gamma ~ 1.2)
+            const w = Math.pow(v / 100, 1.2);
             const c = new THREE.Color(this.metricColors[k]);
             r += c.r * w;
             g += c.g * w;
             b += c.b * w;
         });
+
+        if (sum <= 0 || (r === 0 && g === 0 && b === 0)) {
+            return { color: new THREE.Color(0x000000), maxVal: 0, sumVal: 0 };
+        }
+
+        // Tone-map to prevent clipping to white: Reinhard per-channel using max channel
+        const maxCh = Math.max(r, g, b);
+        const denom = 1.0 + maxCh; // soft-clip
+        r = r / denom;
+        g = g / denom;
+        b = b / denom;
+
+        // Slight saturation boost to avoid grayness
+        const luma = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+        const satBoost = 1.25; // 1.0 = none; >1 = more saturated
+        r = THREE.Math.clamp(luma + (r - luma) * satBoost, 0, 1);
+        g = THREE.Math.clamp(luma + (g - luma) * satBoost, 0, 1);
+        b = THREE.Math.clamp(luma + (b - luma) * satBoost, 0, 1);
 
         const color = new THREE.Color().setRGB(r, g, b);
         return { color, maxVal, sumVal: sum };
