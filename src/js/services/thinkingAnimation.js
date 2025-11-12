@@ -275,10 +275,19 @@ class ThinkingAnimation {
         this.flashing.material.uniforms.uTime.value = delta;
         // Set color and intensity based on dominant metric in real time
         const { color, value } = this.getDominantColor();
-        this.flashing.material.uniforms.glowColor.value = new THREE.Color(color);
+        const uniforms = this.flashing.material.uniforms;
+        uniforms.glowColor.value = new THREE.Color(color);
+        // When no data (all 0), hide the glow entirely
+        if (value <= 0) {
+            uniforms.uFadeTime.value = 0.0;
+            uniforms.uMetricIntensity.value = 0.0;
+            return;
+        }
+        // Ensure glow is visible when there's data
+        uniforms.uFadeTime.value = 1.0;
         // Map 0..100 -> 0.4..2.0 for a noticeable brightness range
         const intensity = 0.4 + (value / 100) * (2.0 - 0.4);
-        this.flashing.material.uniforms.uMetricIntensity.value = intensity;
+        uniforms.uMetricIntensity.value = intensity;
     }
     isActive(val) {
         if (val) {
