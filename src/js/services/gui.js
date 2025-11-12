@@ -34,6 +34,32 @@ class GUI {
       this.p = 1.0;
       this.offsetY = 0.1;
       this.showXray = false;
+
+      // Per-brain metrics (0-100)
+      this.brain1 = {
+        Attention: 0,
+        Engagement: 0,
+        Excitement: 0,
+        Interest: 0,
+        Relaxation: 0,
+        Stress: 0,
+      };
+      this.brain2 = {
+        Attention: 0,
+        Engagement: 0,
+        Excitement: 0,
+        Interest: 0,
+        Relaxation: 0,
+        Stress: 0,
+      };
+      this.brain3 = {
+        Attention: 0,
+        Engagement: 0,
+        Excitement: 0,
+        Interest: 0,
+        Relaxation: 0,
+        Stress: 0,
+      };
     })();
 
     const gui = new dat.GUI();
@@ -107,6 +133,46 @@ class GUI {
     gui.add(this.controls, "thinking").onChange((e) => {
       mainBrain.thinkingAnimation.isActive(e);
     });
+
+    // Helper to propagate metrics to a ThinkingAnimation instance
+    const updateMetrics = (anim, data) => {
+      if (!anim) return;
+      anim.setMetrics({
+        attention: data.Attention,
+        engagement: data.Engagement,
+        excitement: data.Excitement,
+        interest: data.Interest,
+        relaxation: data.Relaxation,
+        stress: data.Stress,
+      });
+    };
+
+    // Brain 1 metrics controls
+    const b1 = gui.addFolder("Brain 1 Metrics");
+    b1.add(this.controls.brain1, "Attention", 0, 100).onChange(() => updateMetrics(mainBrain.thinkingAnimation, this.controls.brain1));
+    b1.add(this.controls.brain1, "Engagement", 0, 100).onChange(() => updateMetrics(mainBrain.thinkingAnimation, this.controls.brain1));
+    b1.add(this.controls.brain1, "Excitement", 0, 100).onChange(() => updateMetrics(mainBrain.thinkingAnimation, this.controls.brain1));
+    b1.add(this.controls.brain1, "Interest", 0, 100).onChange(() => updateMetrics(mainBrain.thinkingAnimation, this.controls.brain1));
+    b1.add(this.controls.brain1, "Relaxation", 0, 100).onChange(() => updateMetrics(mainBrain.thinkingAnimation, this.controls.brain1));
+    b1.add(this.controls.brain1, "Stress", 0, 100).onChange(() => updateMetrics(mainBrain.thinkingAnimation, this.controls.brain1));
+
+    // Brain 2 metrics controls
+    const b2 = gui.addFolder("Brain 2 Metrics");
+    b2.add(this.controls.brain2, "Attention", 0, 100).onChange(() => updateMetrics(mainBrain.thinkingAnimation2, this.controls.brain2));
+    b2.add(this.controls.brain2, "Engagement", 0, 100).onChange(() => updateMetrics(mainBrain.thinkingAnimation2, this.controls.brain2));
+    b2.add(this.controls.brain2, "Excitement", 0, 100).onChange(() => updateMetrics(mainBrain.thinkingAnimation2, this.controls.brain2));
+    b2.add(this.controls.brain2, "Interest", 0, 100).onChange(() => updateMetrics(mainBrain.thinkingAnimation2, this.controls.brain2));
+    b2.add(this.controls.brain2, "Relaxation", 0, 100).onChange(() => updateMetrics(mainBrain.thinkingAnimation2, this.controls.brain2));
+    b2.add(this.controls.brain2, "Stress", 0, 100).onChange(() => updateMetrics(mainBrain.thinkingAnimation2, this.controls.brain2));
+
+    // Brain 3 metrics controls
+    const b3 = gui.addFolder("Brain 3 Metrics");
+    b3.add(this.controls.brain3, "Attention", 0, 100).onChange(() => updateMetrics(mainBrain.thinkingAnimation3, this.controls.brain3));
+    b3.add(this.controls.brain3, "Engagement", 0, 100).onChange(() => updateMetrics(mainBrain.thinkingAnimation3, this.controls.brain3));
+    b3.add(this.controls.brain3, "Excitement", 0, 100).onChange(() => updateMetrics(mainBrain.thinkingAnimation3, this.controls.brain3));
+    b3.add(this.controls.brain3, "Interest", 0, 100).onChange(() => updateMetrics(mainBrain.thinkingAnimation3, this.controls.brain3));
+    b3.add(this.controls.brain3, "Relaxation", 0, 100).onChange(() => updateMetrics(mainBrain.thinkingAnimation3, this.controls.brain3));
+    b3.add(this.controls.brain3, "Stress", 0, 100).onChange(() => updateMetrics(mainBrain.thinkingAnimation3, this.controls.brain3));
 
     gui.add(this.controls, "transitioning").onChange((e) => {
       if (e) {

@@ -13,6 +13,24 @@ class ThinkingAnimation {
         this.memorySelected = mainBrain.memorySelected;
         this.alphaAnimation = { v: 0.0 };
         this.secuenceAnimation = 0;
+        // Per-brain performance metrics (0-100)
+        this.metrics = {
+            attention: 0,
+            engagement: 0,
+            excitement: 0,
+            interest: 0,
+            relaxation: 0,
+            stress: 0,
+        };
+        // Color mapping for metrics
+        this.metricColors = {
+            attention: 0x00ff00,    // Green
+            engagement: 0x40e0d0,   // Turquoise
+            excitement: 0xffff00,   // Yellow
+            interest: 0xffa500,     // Orange
+            relaxation: 0x0066ff,   // Blue
+            stress: 0x800080,       // Purple
+        };
     }
 
     initAnimation() {
@@ -76,6 +94,29 @@ class ThinkingAnimation {
         this.flashing = new THREE.Points(geometry, customMaterial);
         this.flashing.name = 'flashing';
         scene.add(this.flashing);
+    }
+
+    // Update metrics from UI (values 0-100)
+    setMetrics(partialMetrics) {
+        this.metrics = { ...this.metrics, ...partialMetrics };
+    }
+
+    // Compute the dominant metric color
+    getDominantColor() {
+        const entries = Object.entries(this.metrics);
+        if (!entries.length) return this.metricColors.attention;
+        // Find max value; tie-break by order Attention, Engagement, Excitement, Interest, Relaxation, Stress
+        const priority = ['attention', 'engagement', 'excitement', 'interest', 'relaxation', 'stress'];
+        let maxKey = priority[0];
+        let maxVal = -Infinity;
+        for (const [k, v] of entries) {
+            const val = typeof v === 'number' ? v : 0;
+            if (val > maxVal || (val === maxVal && priority.indexOf(k) < priority.indexOf(maxKey))) {
+                maxVal = val;
+                maxKey = k;
+            }
+        }
+        return this.metricColors[maxKey] || this.metricColors.attention;
     }
 
     animationCamera(val) {
@@ -231,6 +272,9 @@ class ThinkingAnimation {
             this.flashing.position,
         );
         this.flashing.material.uniforms.uTime.value = delta;
+        // Set color based on dominant metric in real time
+        const hex = this.getDominantColor();
+        this.flashing.material.uniforms.glowColor.value = new THREE.Color(hex);
     }
     isActive(val) {
         if (val) {
