@@ -1,5 +1,6 @@
 uniform vec3 glowColor;
 uniform float uFadeTime;
+uniform float uMetricIntensity;
 varying float intensity;
 varying float alpha;
 
@@ -10,7 +11,7 @@ void main()
         float pct = 1.0 - smoothstep(0.0, 0.5, distanceToCenter);
         vec3 color = vec3(1.0) * gl_FragColor.rgb;
 
-        vec3 glow = glowColor * intensity;
+        vec3 glow = glowColor * intensity * uMetricIntensity;
 
         gl_FragColor = vec4(glow, clamp(alpha, 0.0, uFadeTime));
 

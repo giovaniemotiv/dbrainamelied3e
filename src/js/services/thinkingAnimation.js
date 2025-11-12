@@ -78,6 +78,7 @@ class ThinkingAnimation {
                 uMouse: { type: 'f', value: new THREE.Vector2(0.0) },
                 isCustomAlpha: { type: 'b', value: false },
                 uAlpha: { type: 'float', value: 0.0 },
+                uMetricIntensity: { type: 'f', value: 1.0 },
                 uResolution: {
                     type: 'v2',
                     value: new THREE.Vector2(window.innerWidth, window.innerHeight),
@@ -116,7 +117,7 @@ class ThinkingAnimation {
                 maxKey = k;
             }
         }
-        return this.metricColors[maxKey] || this.metricColors.attention;
+        return { color: this.metricColors[maxKey] || this.metricColors.attention, value: Math.max(0, Math.min(100, maxVal)) };
     }
 
     animationCamera(val) {
@@ -272,9 +273,12 @@ class ThinkingAnimation {
             this.flashing.position,
         );
         this.flashing.material.uniforms.uTime.value = delta;
-        // Set color based on dominant metric in real time
-        const hex = this.getDominantColor();
-        this.flashing.material.uniforms.glowColor.value = new THREE.Color(hex);
+        // Set color and intensity based on dominant metric in real time
+        const { color, value } = this.getDominantColor();
+        this.flashing.material.uniforms.glowColor.value = new THREE.Color(color);
+        // Map 0..100 -> 0.4..2.0 for a noticeable brightness range
+        const intensity = 0.4 + (value / 100) * (2.0 - 0.4);
+        this.flashing.material.uniforms.uMetricIntensity.value = intensity;
     }
     isActive(val) {
         if (val) {
