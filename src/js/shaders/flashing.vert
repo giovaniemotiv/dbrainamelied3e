@@ -15,31 +15,24 @@ void main()
 {
     if(uFadeTime > 0.00001){
 
+    // Decouple glow from camera angle: keep intensity constant
     vec3 vNormal = normalize( normalMatrix * normal );
-	vec3 vNormel = normalize( normalMatrix * viewVector );
-	intensity = pow( c - dot(vNormal, vNormel), p );
+    vec3 vNormel = normalize( normalMatrix * viewVector );
+    intensity = 1.0;
 
     vec4 mvPosition = modelViewMatrix * vec4( position, 1.0 );
     gl_PointSize = size * ( 300.0 / -mvPosition.z );
 
-    float m = mod(size, sin( uTime * 10.0 + (position.x + position.y) / 100.0));
-
-        if(m > 0.5 && m < 0.7){
-          alpha = clamp(abs(sin(uTime * 10.0)), 0.2, 0.5);
-        }
-        if(m > 0.8){
-          alpha = clamp(abs(sin(uTime * 10.0)), 0.2, 0.5);
-        }
-
-        if(m > 0.0 && m < 0.5){
-          alpha = clamp(abs(sin(uTime * 10.0)), 0.2, 0.7);
-        }
+    // Continuous per-point flicker: stable, never fully off
+    float phase = fract(sin(dot(position.xy, vec2(12.9898, 78.233))) * 43758.5453);
+    float flicker = 0.5 + 0.5 * sin(uTime * 8.0 + phase * 6.2831853);
+    alpha = mix(0.25, 0.7, flicker);
 
 
         //static ligthning
-        if( isCustomAlpha ) {
-            alpha = uAlpha;
-        }
+    if( isCustomAlpha ) {
+      alpha = uAlpha;
+    }
 
 
     gl_PointSize = 9.5 * size;

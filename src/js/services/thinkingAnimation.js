@@ -13,6 +13,8 @@ class ThinkingAnimation {
         this.memorySelected = mainBrain.memorySelected;
         this.alphaAnimation = { v: 0.0 };
         this.secuenceAnimation = 0;
+        // Keep sparkle continuous (no fade envelope/camera loop) by default
+        this.continuous = true;
         // Per-brain performance metrics (0-100)
         this.metrics = {
             attention: 0,
@@ -77,7 +79,7 @@ class ThinkingAnimation {
                 glowColor: { type: 'c', value: new THREE.Color(0x2c3e93) },
                 viewVector: { type: 'v3', value: camera.position },
                 uTime: { type: 'f', value: 0.0 },
-                uFadeTime: { type: 'f', value: 0.0 },
+                uFadeTime: { type: 'f', value: 1.0 },
                 uMouse: { type: 'f', value: new THREE.Vector2(0.0) },
                 isCustomAlpha: { type: 'b', value: false },
                 uAlpha: { type: 'float', value: 0.0 },
@@ -166,10 +168,14 @@ class ThinkingAnimation {
     }
 
     animationCamera(val) {
+        // Camera animation disabled entirely (continuous mode always on)
         this.mainBrain.isRecording = false;
-        // this.isActive(true);
-        this.flashing.material.uniforms.uFadeTime.value = 1;
+        this.flashing.material.uniforms.uFadeTime.value = 1.0;
         this.isFlashing = true;
+        if (this.flashing.geometry && this.flashing.geometry.attributes && this.flashing.geometry.attributes.position) {
+            this.flashing.geometry.setDrawRange(0, this.flashing.geometry.attributes.position.count);
+        }
+        return; // hard exit
 
         if (this.alphaAnimation.v === 0.0) {
             TweenMax.fromTo(
@@ -228,7 +234,12 @@ class ThinkingAnimation {
             positions[i * 3 + 2] = locations.z;
         }
 
-        this.flashing.material.uniforms.isCustomAlpha.value = true;
+        if (!this.continuous) {
+            this.flashing.material.uniforms.isCustomAlpha.value = true;
+        } else {
+            // In continuous mode don't lock alpha; let shader flicker naturally
+            this.flashing.material.uniforms.isCustomAlpha.value = false;
+        }
 
         const { camera } = this.mainBrain;
 
@@ -238,44 +249,15 @@ class ThinkingAnimation {
             z: camera.position.z,
         };
 
-        TweenMax.fromTo(
-            cameraPos,
-            1.5,
-            { x: cameraPos.x, y: cameraPos.y, z: cameraPos.z },
-            {
-                x: locations.camera.x,
-                y: locations.camera.y,
-                z: locations.camera.z,
-                ease: Power1.easeInOut,
-                onUpdate: () => {
-                    camera.position.x = cameraPos.x;
-                    camera.position.y = cameraPos.y;
-                    camera.position.z = cameraPos.z;
-                },
-                onComplete: () => {
-                    this.secuenceAnimation += 1;
-                    this.animationCamera(this.secuenceAnimation);
-                },
-            },
-        );
+        // Disable camera tweening entirely
+        camera.position.x = cameraPos.x;
+        camera.position.y = cameraPos.y;
+        camera.position.z = cameraPos.z;
     }
 
     thinkingFadeIn(val) {
-        TweenMax.fromTo(
-            this.alphaAnimation,
-            2.5,
-            { v: 0.0 },
-            {
-                v: 1.0,
-                ease: Power1.easeInOut,
-                onUpdate: () => {
-                    this.flashing.material.uniforms.uAlpha.value = this.alphaAnimation.v;
-                },
-                onStart: () => {
-                    this.selectMemoryThinking(val);
-                },
-            },
-        );
+        // Disabled (no fade envelope)
+        return;
     }
 
     updateSubSystem(subsystemPayload) {
@@ -320,10 +302,17 @@ class ThinkingAnimation {
             camera.position,
             this.flashing.position,
         );
-        this.flashing.material.uniforms.uTime.value = delta;
+    // Accumulate time so sparkles never stall
+    const currentTime = this.flashing.material.uniforms.uTime.value || 0.0;
+    this.flashing.material.uniforms.uTime.value = currentTime + delta;
         // Ensure the shader uses dynamic alpha (not a frozen custom alpha)
         const uniforms = this.flashing.material.uniforms;
         uniforms.isCustomAlpha.value = false;
+        // Pin flashing uniforms fully on in continuous mode
+        if (this.continuous) {
+            if (uniforms.uFlashingAlpha) uniforms.uFlashingAlpha.value = 1.0;
+            if (uniforms.uIsFlashing) uniforms.uIsFlashing.value = 1.0;
+        }
         // Keep full draw range in case other code modified it
         if (this.flashing.geometry && this.flashing.geometry.attributes && this.flashing.geometry.attributes.position) {
             this.flashing.geometry.setDrawRange(0, this.flashing.geometry.attributes.position.count);
@@ -338,16 +327,16 @@ class ThinkingAnimation {
             return;
         }
         // Ensure glow is visible when there's data
-        uniforms.uFadeTime.value = 1.0;
-        // Intensity: base on the strongest metric and slightly modulated by overall energy
-        // Base map 0..100 -> 0.4..2.0
-        let base = 0.4 + (maxVal / 100) * (2.0 - 0.4);
-        // Energy factor based on total (0..600) -> 0.9..1.1
-        const energyFactor = 0.9 + Math.min(600, sumVal) / 600 * 0.2;
-        const intensity = Math.max(0.4, Math.min(2.0, base * energyFactor));
-        uniforms.uMetricIntensity.value = intensity;
+            uniforms.uFadeTime.value = 1.0;
+            // Keep a steady medium intensity at all times (static, no ramp)
+            uniforms.uMetricIntensity.value = 1.0;
     }
     isActive(val) {
+        if (this.continuous) {
+            this.flashing.material.uniforms.uFadeTime.value = val ? 1.0 : 0.0;
+            this.isFlashing = !!val;
+            return;
+        }
         if (val) {
             const progress = { p: 0.0 };
             TweenMax.fromTo(
@@ -385,96 +374,46 @@ class ThinkingAnimation {
     }
 
     flashingAnimation(isActive) {
+        // Continuous mode: keep fully on, skip tweening altogether
+        if (this.continuous) {
+            if (this.flashing.material.uniforms.uIsFlashing) {
+                this.flashing.material.uniforms.uIsFlashing.value = true;
+            }
+            if (this.flashing.material.uniforms.uFlashingAlpha) {
+                this.flashing.material.uniforms.uFlashingAlpha.value = 1.0;
+            }
+            this.isFlashing = true;
+            return;
+        }
+        // Legacy tween behavior (non-continuous mode)
         this.flashing.material.uniforms.uIsFlashing.value = isActive;
-
         if (isActive) {
             const progress = { p: 0.0 };
-            TweenMax.fromTo(
-                progress,
-                2.5,
-                { p: 0.0 },
-                {
-                    p: 1.0,
-                    ease: Power1.easeInOut,
-                    onUpdate: (value) => {
-                        this.flashing.material.uniforms.uFlashingAlpha.value = progress.p;
-                        this.isFlashing = true;
-                    },
+            TweenMax.fromTo(progress, 2.5, { p: 0.0 }, {
+                p: 1.0,
+                ease: Power1.easeInOut,
+                onUpdate: () => {
+                    this.flashing.material.uniforms.uFlashingAlpha.value = progress.p;
+                    this.isFlashing = true;
                 },
-            );
+            });
         } else {
             const progress = { p: 1.0 };
-            TweenMax.fromTo(
-                progress,
-                2.5,
-                { p: 1.0 },
-                {
-                    p: 0.0,
-                    ease: Power1.easeInOut,
-                    onUpdate: (value) => {
-                        this.flashing.material.uniforms.uFlashingAlpha.value = progress.p;
-                        this.isFlashing = false;
-                    },
+            TweenMax.fromTo(progress, 2.5, { p: 1.0 }, {
+                p: 0.0,
+                ease: Power1.easeInOut,
+                onUpdate: () => {
+                    this.flashing.material.uniforms.uFlashingAlpha.value = progress.p;
+                    this.isFlashing = false;
                 },
-            );
+            });
         }
     }
 
     animate(isActive) {
-        const cameraPos = this.mainBrain.camera.position;
-        const { target } = this.mainBrain.orbitControls;
-        if (!this.isFlashing) {
-            this.flashingAnimation(true);
-        }
-        if (isActive) {
-            const progress = { p: 0.0 };
-            TweenMax.fromTo(
-                progress,
-                2.5,
-                { p: 0.0 },
-                {
-                    p: 1.0,
-                    ease: Power1.easeInOut,
-                    onUpdate: () => {
-                        this.updateBurbleUp(progress.p);
-                        this.mainBrain.orbitControls.target.set(
-                            target.x,
-                            target.y + progress.p,
-                            target.z,
-                        );
-                        this.mainBrain.camera.position.set(
-                            cameraPos.x,
-                            cameraPos.y + progress.p,
-                            cameraPos.z,
-                        );
-                    },
-                },
-            );
-        } else {
-            const progress = { p: 1.0 };
-            TweenMax.fromTo(
-                progress,
-                2.5,
-                { p: 1.0 },
-                {
-                    p: 0.0,
-                    ease: Power1.easeInOut,
-                    onUpdate: () => {
-                        this.updateBurbleUp(progress.p);
-                        this.mainBrain.orbitControls.target.set(
-                            target.x,
-                            target.y - progress.p,
-                            target.z,
-                        );
-                        this.mainBrain.camera.position.set(
-                            cameraPos.x,
-                            cameraPos.y - progress.p,
-                            cameraPos.z,
-                        );
-                    },
-                },
-            );
-        }
+        // Disable all burble/camera tweening; keep flashing active
+        if (!this.isFlashing) this.flashingAnimation(true);
+        return;
     }
 }
 
