@@ -67,6 +67,9 @@ class ThinkingAnimation {
         geometry.addAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
         geometry.addAttribute('size', new THREE.Float32BufferAttribute(sizes, 1));
         geometry.computeBoundingSphere();
+    // Ensure full draw range so points keep rendering continuously
+    const pointCount = positions.length / 3;
+    geometry.setDrawRange(0, pointCount);
         const customMaterial = new THREE.ShaderMaterial({
             uniforms: {
                 c: { type: 'f', value: 0.9 },
@@ -120,6 +123,38 @@ class ThinkingAnimation {
         return { color: this.metricColors[maxKey] || this.metricColors.attention, value: Math.max(0, Math.min(100, maxVal)) };
     }
 
+    // Compute blended color and intensity data based on weighted metrics
+    getBlendedColorAndIntensity() {
+        const keys = ['attention', 'engagement', 'excitement', 'interest', 'relaxation', 'stress'];
+        let sum = 0;
+        let maxVal = 0;
+        const weights = {};
+        keys.forEach((k) => {
+            const v = Math.max(0, Math.min(100, Number(this.metrics[k] || 0)));
+            weights[k] = v;
+            sum += v;
+            if (v > maxVal) maxVal = v;
+        });
+
+        if (sum <= 0) {
+            return { color: new THREE.Color(0x000000), maxVal: 0, sumVal: 0 };
+        }
+
+        // Weighted blend in linear space
+        let r = 0, g = 0, b = 0;
+        keys.forEach((k) => {
+            const w = weights[k] / sum;
+            if (w <= 0) return;
+            const c = new THREE.Color(this.metricColors[k]);
+            r += c.r * w;
+            g += c.g * w;
+            b += c.b * w;
+        });
+
+        const color = new THREE.Color().setRGB(r, g, b);
+        return { color, maxVal, sumVal: sum };
+    }
+
     animationCamera(val) {
         this.mainBrain.isRecording = false;
         // this.isActive(true);
@@ -160,7 +195,10 @@ class ThinkingAnimation {
             );
         }
 
-        this.flashing.geometry.setDrawRange(0, 1);
+        // keep full draw range so the thinking points continue rendering during camera animation
+        if (this.flashing.geometry && this.flashing.geometry.attributes && this.flashing.geometry.attributes.position) {
+            this.flashing.geometry.setDrawRange(0, this.flashing.geometry.attributes.position.count);
+        }
     }
 
     selectMemoryThinking(val) {
@@ -273,20 +311,30 @@ class ThinkingAnimation {
             this.flashing.position,
         );
         this.flashing.material.uniforms.uTime.value = delta;
-        // Set color and intensity based on dominant metric in real time
-        const { color, value } = this.getDominantColor();
+        // Ensure the shader uses dynamic alpha (not a frozen custom alpha)
         const uniforms = this.flashing.material.uniforms;
-        uniforms.glowColor.value = new THREE.Color(color);
+        uniforms.isCustomAlpha.value = false;
+        // Keep full draw range in case other code modified it
+        if (this.flashing.geometry && this.flashing.geometry.attributes && this.flashing.geometry.attributes.position) {
+            this.flashing.geometry.setDrawRange(0, this.flashing.geometry.attributes.position.count);
+        }
+        // Set blended color and intensity based on current metrics
+        const { color, maxVal, sumVal } = this.getBlendedColorAndIntensity();
+        uniforms.glowColor.value = color;
         // When no data (all 0), hide the glow entirely
-        if (value <= 0) {
+        if (maxVal <= 0 || sumVal <= 0) {
             uniforms.uFadeTime.value = 0.0;
             uniforms.uMetricIntensity.value = 0.0;
             return;
         }
         // Ensure glow is visible when there's data
         uniforms.uFadeTime.value = 1.0;
-        // Map 0..100 -> 0.4..2.0 for a noticeable brightness range
-        const intensity = 0.4 + (value / 100) * (2.0 - 0.4);
+        // Intensity: base on the strongest metric and slightly modulated by overall energy
+        // Base map 0..100 -> 0.4..2.0
+        let base = 0.4 + (maxVal / 100) * (2.0 - 0.4);
+        // Energy factor based on total (0..600) -> 0.9..1.1
+        const energyFactor = 0.9 + Math.min(600, sumVal) / 600 * 0.2;
+        const intensity = Math.max(0.4, Math.min(2.0, base * energyFactor));
         uniforms.uMetricIntensity.value = intensity;
     }
     isActive(val) {
