@@ -8,6 +8,20 @@ Amelia Brain 3D (Three.js)
 
 Interactive brain visualization built on Three.js r91, GSAP, postprocessing, and three-bas. This repo includes small compatibility fixes so it runs on modern Node/npm on Windows without modifying core features.
 
+## Features
+
+- Three synchronized brains (left, center, right) rendered as particle systems
+- Always-on “thinking” glow with continuous sparkle (no looped fade in/out)
+- Per-brain metrics (0–100) for six signals: Attention, Engagement, Excitement, Interest, Relaxation, Stress
+- Real-time color from weighted additive mixing of the six colors with tone mapping to avoid white-out
+- Glow is visible whenever any metric > 0 and hides only when all metrics are 0
+- Camera movement does not influence glow intensity
+
+### Controls (dat.GUI)
+
+- Brain 1/2/3 Metrics folders: adjust the six sliders (0–100) per brain; color updates live
+- Other folders: lights, rotation, xRay toggles as needed for your scene
+
 ## What changed in this fork
 
 To make the project install and run smoothly today, the following non-invasive changes were applied:
@@ -44,6 +58,8 @@ Assets (OBJ model, textures, fonts) are served from `static/` via webpack-dev-se
 - npm run build
 - The output will be in `dist/`.
 
+After building, you can deploy the contents of `dist/` to any static host (GitHub Pages, Netlify, Firebase Hosting, S3, etc.).
+
 ## Fork and publish to your GitHub
 
 Option A: Use GitHub UI
@@ -61,13 +77,22 @@ Option B: From this local checkout
 
 ## Optional: Publish with GitHub Pages
 
-- Build: npm run build
-- Push contents of `dist/` to a `gh-pages` branch
-  - You can use the `gh-pages` npm package or set up Pages to serve from `/docs` and copy `dist` there.
+- Build your production bundle: `npm run build`
+- Option A (gh-pages branch): push `dist/` to a `gh-pages` branch and enable Pages for that branch
+- Option B (/docs): copy the contents of `dist/` into a `/docs` folder on the default branch and configure Pages to serve from `/docs`
+
+Tip: If your repository is not at the domain root (e.g., `/user/repo/`), ensure asset paths are relative (the default in this setup) and update your project homepage setting in GitHub if needed.
 
 ## Notes and future improvements
 
 - Consider upgrading to webpack 5 and three r12x+ if you plan active development; this will remove the shim and deprecated plugins (extract-text-webpack-plugin, eslint-loader).
 - Re-enable ESLint once a consistent LF strategy is in place (e.g., .editorconfig and git autocrlf settings).
 - Lock Node via `.nvmrc` (e.g., `14`) if you want stricter reproducibility.
+
+## Changelog (recent highlights)
+
+- feat: third brain and camera framing for trio layout
+- feat(gui): per-brain metrics sliders and real-time color mapping
+- feat(thinking): continuous glow; additive color mixing with tone mapping; saturation boost
+- fix(thinking): hide glow when all metrics are zero; remove camera influence
 
